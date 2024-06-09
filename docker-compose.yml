@@ -1,0 +1,28 @@
+services:
+  proyecto-service:
+    image: node:20
+    working_dir: /app
+    volumes:
+      - .:/app
+      - /app/node_modules
+    ports:
+      - "4001-4010:4001"
+    environment:
+      - DATABASE_URL=mongodb+srv://mbautistarubiano:eUeWSbAl27y0N41r@cluster0.iprxl9c.mongodb.net/
+      - NODE_ENV=development
+    command: >
+      sh -c "npm install && npm start"
+    deploy:
+      replicas: 3 #Aquí añadí las 3 replicas para escalamiento horizontal, configuré Nginx para repartir de forma local la carga equitativamente.
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:

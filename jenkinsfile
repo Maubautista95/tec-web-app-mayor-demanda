@@ -1,0 +1,72 @@
+pipeline {
+    agent any
+
+    environment {
+        DOCKERHUB_USERNAME = credentials('dockerhub-username') // Nombre de usuario de Docker Hub
+        DOCKERHUB_PASSWORD = credentials('dockerhub-password') // Contraseña de Docker Hub
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                script {
+                    checkout([$class: 'GitSCM', 
+                              branches: [[name: '*/main']], // Cambia 'main' si es necesario
+                              userRemoteConfigs: [[url: 'https://github.com/Maubautista95/tec-web-app-mayor-demanda',
+                                                   credentialsId: 'id-de-credenciales']]])
+                }
+            }
+        }
+
+        stage('Verify Docker') {
+            steps {
+                bat 'docker info'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                bat 'docker build -t mbautista95/iud/microservicio-proyecto:latest .'
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKERHUB_USERNAME', passwordVariable: 'DOCKERHUB_PASSWORD')]) {
+                        bat """
+                        docker login -u ${DOCKERHUB_USERNAME} -p ${DOCKERHUB_PASSWORD}
+                        docker push mbautista95/iud:microservicio-proyecto   
+                        """
+                    }
+                }
+            }
+        }
+        
+        
+      stage('Deploy') {
+            steps {
+                echo 'Deploying...'
+                script {
+                    withCredentials([string(credentialsId: 'mongo-db-url', variable: 'DATABASE_URL')]) {
+                        bat 'npm install'
+                        bat 'npm start'
+                    }
+                }
+            }
+        }
+    }
+    
+
+    post {
+        always {
+            echo 'Pipeline finished'
+        }
+        success {
+            echo 'Pipeline succeeded'
+        }
+        failure {
+            echo 'Pipeline failed'
+        }
+    }
+}
